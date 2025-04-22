@@ -80,12 +80,12 @@ Lab1/
 
 - 支持图像自动展示：调用系统默认查看器打开 `graph.png`
 - 支持图像自动生成：依赖 Graphviz `dot` 工具
+- 暂未使用GUI美化交互界面，拟于下版使用 `JavaFX` 优化
 
 ---
 
 ## 📞 联系作者
 
 如有问题，请联系 `Stellaream_wyt@outlook.com` 或在实验课上交流 🙌
-```
 
 ---
