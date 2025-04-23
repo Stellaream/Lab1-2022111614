@@ -6,7 +6,6 @@ import java.util.*;
 import java.util.List;
 
 public class Lab1 {
-    private static final double DAMPING_FACTOR = 0.85;
     private static final Map<String, Map<String, Integer>> graph = new HashMap<>();
     private static final Random random = new Random();
 
@@ -42,8 +41,18 @@ public class Lab1 {
                     System.out.println(calcShortestPath(w1, w2));
                 }
                 case "5" -> {
-                    System.out.print("输入单词：");
-                    System.out.println("PageRank值：" + calPageRank(scanner.nextLine().toLowerCase()));
+                    System.out.print("输入阻尼因子（如 0.85）：");
+                    try {
+                        double d = Double.parseDouble(scanner.nextLine());
+                        if (d < 0 || d > 1) throw new NumberFormatException();
+                        Map<String, Double> pr = calPageRank(d);
+                        System.out.println("所有单词的 PageRank 值：");
+                        pr.entrySet().stream()
+                                .sorted((e1, e2) -> Double.compare(e2.getValue(), e1.getValue()))
+                                .forEach(e -> System.out.printf("%-15s : %.6f\n", e.getKey(), e.getValue()));
+                    } catch (NumberFormatException e) {
+                        System.out.println("阻尼因子必须是 0 到 1 之间的小数！");
+                    }
                 }
                 case "6" -> System.out.println("随机游走路径：" + randomWalk());
                 case "7" -> {
@@ -74,6 +83,11 @@ public class Lab1 {
             Map<String, Integer> edges = graph.get(words[i]);
             edges.put(words[i + 1], edges.getOrDefault(words[i + 1], 0) + 1);
         }
+
+        // 确保最后一个词也加入图中，防止只作为终点却无法识别
+        if (words.length > 0) {
+            graph.putIfAbsent(words[words.length - 1], new HashMap<>());
+        }
     }
 
     public static void showDirectedGraph(Map<String, Map<String, Integer>> G) {
@@ -89,9 +103,8 @@ public class Lab1 {
             Files.writeString(Path.of("graph.dot"), dot.toString());
             System.out.println("DOT 文件已生成：graph.dot");
 
-            // 调用 Graphviz 渲染 PNG 图
             ProcessBuilder pb = new ProcessBuilder("dot", "-Tpng", "graph.dot", "-o", "graph.png");
-            pb.inheritIO(); // 继承控制台输出
+            pb.inheritIO();
             Process process = pb.start();
             process.waitFor();
             System.out.println("图已生成为 graph.png，即将打开！");
@@ -101,15 +114,51 @@ public class Lab1 {
         }
     }
 
+    private static boolean inGraph(String word) {
+        if (graph.containsKey(word)) return true;
+        for (Map<String, Integer> edges : graph.values()) {
+            if (edges.containsKey(word)) return true;
+        }
+        return false;
+    }
 
     public static String queryBridgeWords(String word1, String word2) {
-        if (!graph.containsKey(word1)) return "No \"" + word1 + "\" in the graph!";
+        boolean hasWord1 = inGraph(word1);
+        boolean hasWord2 = inGraph(word2);
+
+        if (!hasWord1 && !hasWord2) {
+            return "No \"" + word1 + "\" and \"" + word2 + "\" in the graph!";
+        }
+        if (!hasWord1) return "No \"" + word1 + "\" in the graph!";
+        if (!hasWord2) return "No \"" + word2 + "\" in the graph!";
+
+        if (!graph.containsKey(word1)) {
+            return "No bridge words from \"" + word1 + "\" to \"" + word2 + "\"!";
+        }
+
         Set<String> bridges = new HashSet<>();
         for (String mid : graph.get(word1).keySet()) {
-            if (graph.containsKey(mid) && graph.get(mid).containsKey(word2)) bridges.add(mid);
+            if (graph.containsKey(mid) && graph.get(mid).containsKey(word2)) {
+                bridges.add(mid);
+            }
         }
-        if (bridges.isEmpty()) return "No bridge words from \"" + word1 + "\" to \"" + word2 + "\"!";
-        return "The bridge words from \"" + word1 + "\" to \"" + word2 + "\" are: " + String.join(", ", bridges);
+
+        if (bridges.isEmpty()) {
+            return "No bridge words from \"" + word1 + "\" to \"" + word2 + "\"!";
+        }
+
+        List<String> bridgeList = new ArrayList<>(bridges);
+        String result;
+        if (bridgeList.size() == 1) {
+            result = bridgeList.getFirst();
+        } else if (bridgeList.size() == 2) {
+            result = bridgeList.get(0) + " and " + bridgeList.get(1);
+        } else {
+            result = String.join(", ", bridgeList.subList(0, bridgeList.size() - 1))
+                    + ", and " + bridgeList.getLast();
+        }
+
+        return "The bridge words from \"" + word1 + "\" to \"" + word2 + "\" are: " + result + ".";
     }
 
     public static String generateNewText(String inputText) {
@@ -135,6 +184,7 @@ public class Lab1 {
 
     public static String calcShortestPath(String word1, String word2) {
         if (!graph.containsKey(word1)) return "No \"" + word1 + "\" in the graph!";
+        if (!graph.containsKey(word2)) return "No \"" + word2 + "\" in the graph!";
         Map<String, Integer> dist = new HashMap<>();
         Map<String, String> prev = new HashMap<>();
         PriorityQueue<String> pq = new PriorityQueue<>(Comparator.comparingInt(dist::get));
@@ -164,7 +214,7 @@ public class Lab1 {
         return "Shortest path: " + String.join(" -> ", path) + "\nLength: " + dist.get(word2);
     }
 
-    public static Double calPageRank(String word) {
+    public static Map<String, Double> calPageRank(double dampingFactor) {
         final int maxIter = 100;
         final double tol = 1e-6;
         Set<String> nodes = graph.keySet();
@@ -173,13 +223,14 @@ public class Lab1 {
 
         for (int it = 0; it < maxIter; it++) {
             Map<String, Double> next = new HashMap<>();
-            for (String n : nodes) next.put(n, (1 - DAMPING_FACTOR) / nodes.size());
+            for (String n : nodes) next.put(n, (1 - dampingFactor) / nodes.size());
 
             for (String u : graph.keySet()) {
                 Map<String, Integer> out = graph.get(u);
+                if (out.isEmpty()) continue;
                 double share = pr.get(u) / out.size();
                 for (String v : out.keySet()) {
-                    next.put(v, next.getOrDefault(v, 0.0) + DAMPING_FACTOR * share);
+                    next.put(v, next.getOrDefault(v, 0.0) + dampingFactor * share);
                 }
             }
 
@@ -188,7 +239,7 @@ public class Lab1 {
             pr = next;
             if (delta < tol) break;
         }
-        return pr.getOrDefault(word, 0.0);
+        return pr;
     }
 
     public static String randomWalk() {
