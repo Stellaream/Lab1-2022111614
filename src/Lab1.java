@@ -259,7 +259,7 @@ public class Lab1 {
             current = next;
         }
         try {
-            Files.writeString(Path.of("Random_walk.txt"), sb.toString());
+            Files.writeString(Path.of("random_walk.txt"), sb.toString());
         } catch (IOException ignored) {}
         return sb.toString();
     }
