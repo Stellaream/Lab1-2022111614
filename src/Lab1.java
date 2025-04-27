@@ -21,17 +21,22 @@ public class Lab1 {
         while (true) {
             System.out.println("\n请选择功能：\n1. 展示图\n2. 查询桥接词\n3. 生成新文本\n4. 最短路径\n5. PageRank\n6. 随机游走\n7. 退出");
             switch (scanner.nextLine()) {
-                case "1" -> showDirectedGraph(graph);
+                case "1" -> {
+                    showDirectedGraph(graph);
+                    waitEnter(scanner);
+                }
                 case "2" -> {
                     System.out.print("输入word1: ");
                     String w1 = scanner.nextLine().toLowerCase();
                     System.out.print("输入word2: ");
                     String w2 = scanner.nextLine().toLowerCase();
                     System.out.println(queryBridgeWords(w1, w2));
+                    waitEnter(scanner);
                 }
                 case "3" -> {
                     System.out.print("输入新文本：");
                     System.out.println(generateNewText(scanner.nextLine()));
+                    waitEnter(scanner);
                 }
                 case "4" -> {
                     System.out.print("输入起点：");
@@ -39,6 +44,7 @@ public class Lab1 {
                     System.out.print("输入终点：");
                     String w2 = scanner.nextLine().toLowerCase();
                     System.out.println(calcShortestPath(w1, w2));
+                    waitEnter(scanner);
                 }
                 case "5" -> {
                     System.out.print("输入阻尼因子（如 0.85）：");
@@ -53,13 +59,20 @@ public class Lab1 {
                     } catch (NumberFormatException e) {
                         System.out.println("阻尼因子必须是 0 到 1 之间的小数！");
                     }
+                    waitEnter(scanner);
                 }
-                case "6" -> System.out.println("随机游走路径：" + randomWalk());
+                case "6" -> {
+                    System.out.println("随机游走路径：" + randomWalk());
+                    waitEnter(scanner);
+                }
                 case "7" -> {
                     System.out.println("程序退出。");
                     return;
                 }
-                default -> System.out.println("无效输入。");
+                default -> {
+                    System.out.println("无效输入。");
+                    waitEnter(scanner);
+                }
             }
         }
     }
@@ -262,5 +275,10 @@ public class Lab1 {
             Files.writeString(Path.of("random_walk.txt"), sb.toString());
         } catch (IOException ignored) {}
         return sb.toString();
+    }
+
+    private static void waitEnter(Scanner scanner) {
+        System.out.println("\n按回车键返回主菜单...");
+        scanner.nextLine();
     }
 }
