@@ -232,28 +232,45 @@ public class Lab1 {
         final double tol = 1e-6;
         Set<String> nodes = graph.keySet();
         Map<String, Double> pr = new HashMap<>();
-        for (String n : nodes) pr.put(n, 1.0 / nodes.size());
+        for (String n : nodes) pr.put(n, 1.0 / nodes.size()); // 初始化PR为均匀分布
 
         for (int it = 0; it < maxIter; it++) {
             Map<String, Double> next = new HashMap<>();
             for (String n : nodes) next.put(n, (1 - dampingFactor) / nodes.size());
 
+            double sinkPR = 0.0; // 累计出度为0的节点的PageRank
+
             for (String u : graph.keySet()) {
                 Map<String, Integer> out = graph.get(u);
-                if (out.isEmpty()) continue;
+                if (out.isEmpty()) {
+                    sinkPR += pr.get(u);
+                    continue;
+                }
                 double share = pr.get(u) / out.size();
                 for (String v : out.keySet()) {
                     next.put(v, next.getOrDefault(v, 0.0) + dampingFactor * share);
                 }
             }
 
+            // 将sink节点贡献均匀加到所有节点上
+            double sinkShare = dampingFactor * sinkPR / nodes.size();
+            for (String n : nodes) {
+                next.put(n, next.get(n) + sinkShare);
+            }
+
+            // 计算收敛量
             double delta = 0.0;
             for (String n : nodes) delta += Math.abs(next.get(n) - pr.get(n));
+
             pr = next;
-            if (delta < tol) break;
+            if (delta < tol) {
+                System.out.println("PageRank 收敛，提前退出。");
+                break;
+            }
         }
         return pr;
     }
+
 
     public static String randomWalk() {
         StringBuilder sb = new StringBuilder();
