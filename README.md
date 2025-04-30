@@ -77,9 +77,8 @@ java Lab1
 ```
 Lab1/
 ├── src/
-│   ├── core/               ← 图与算法核心逻辑模块
-│   ├── gui/                ← JavaFX 图形界面模块
-│   └── Lab1.java           ← 终端入口
+│   ├── Lab1.java           ← 终端 CLI
+│   └── Lab1FX.java         ← JavaFX 图形界面
 ├── example.txt             ← 示例输入文本
 ├── graph.dot               ← 自动生成
 ├── graph.png               ← 自动生成
