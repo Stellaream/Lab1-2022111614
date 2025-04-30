@@ -228,12 +228,12 @@ public class Lab1FX extends Application {
 
     private static String calcShortestPath(String word1, String word2) {
         if (!graph.containsKey(word1)) return "No \"" + word1 + "\" in the graph!";
-        if (!graph.containsKey(word2)) return "No \"" + word2 + "\" in the graph!";
 
         Map<String, Integer> dist = new HashMap<>();
         Map<String, String> prev = new HashMap<>();
         for (String node : graph.keySet()) dist.put(node, Integer.MAX_VALUE);
         dist.put(word1, 0);
+
         PriorityQueue<String> pq = new PriorityQueue<>(Comparator.comparingInt(dist::get));
         pq.add(word1);
 
@@ -250,11 +250,31 @@ public class Lab1FX extends Application {
             }
         }
 
-        if (dist.get(word2) == Integer.MAX_VALUE) return "No path from \"" + word1 + "\" to \"" + word2 + "\"";
-        LinkedList<String> path = new LinkedList<>();
-        for (String at = word2; at != null; at = prev.get(at)) path.addFirst(at);
-        return "Shortest path: " + String.join(" -> ", path) + "\nLength: " + dist.get(word2);
+        if (word2 == null || word2.isEmpty()) {
+            // Display the shortest paths from word1 to all others
+            StringBuilder sb = new StringBuilder();
+            for (String target : graph.keySet()) {
+                if (target.equals(word1)) continue;
+                if (dist.get(target) == Integer.MAX_VALUE) {
+                    sb.append("No path from \"").append(word1).append("\" to \"").append(target).append("\"\n");
+                } else {
+                    LinkedList<String> path = new LinkedList<>();
+                    for (String at = target; at != null; at = prev.get(at)) path.addFirst(at);
+                    sb.append("Shortest path to ").append(target).append(": ")
+                            .append(String.join(" -> ", path))
+                            .append(" (Length: ").append(dist.get(target)).append(")\n");
+                }
+            }
+            return sb.toString();
+        } else {
+            if (!graph.containsKey(word2)) return "No \"" + word2 + "\" in the graph!";
+            if (dist.get(word2) == Integer.MAX_VALUE) return "No path from \"" + word1 + "\" to \"" + word2 + "\"";
+            LinkedList<String> path = new LinkedList<>();
+            for (String at = word2; at != null; at = prev.get(at)) path.addFirst(at);
+            return "Shortest path: " + String.join(" -> ", path) + "\nLength: " + dist.get(word2);
+        }
     }
+
 
     private static Map<String, Double> calPageRank(double d) {
         int maxIter = 100;
