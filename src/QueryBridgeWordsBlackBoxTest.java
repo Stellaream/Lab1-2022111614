@@ -1,74 +1,116 @@
 import static org.junit.jupiter.api.Assertions.*;
-import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import java.lang.reflect.Method;
+import java.lang.reflect.Field;
+import java.util.Map;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.UUID;
 
 public class QueryBridgeWordsBlackBoxTest {
-    private static Method queryBridgeWordsMethod;
-    @BeforeAll
-    public static void setup() throws Exception {
-        // 构造测试图：a → b → c, a → d → c, x 不存在
-        String content = "a b c a d c";
-        Path tempFile = Files.createTempFile("graph_input", ".txt");
-        Files.writeString(tempFile, content);
+    private Method queryBridgeWordsMethod;
+    private Method parseMethod;
 
-        Method parseMethod = Lab1FX.class.getDeclaredMethod("parseTextToGraph", String.class);
-        parseMethod.setAccessible(true);
-        parseMethod.invoke(null, tempFile.toString());
-
+    @BeforeEach
+    public void setup() throws Exception {
         queryBridgeWordsMethod = Lab1FX.class.getDeclaredMethod("queryBridgeWords", String.class, String.class);
         queryBridgeWordsMethod.setAccessible(true);
+        parseMethod = Lab1FX.class.getDeclaredMethod("parseTextToGraph", String.class);
+        parseMethod.setAccessible(true);
+
+        // 清空静态 graph 字段
+        Field graphField = Lab1FX.class.getDeclaredField("graph");
+        graphField.setAccessible(true);
+        Map<String, Map<String, Integer>> graph = (Map<String, Map<String, Integer>>) graphField.get(null);
+        graph.clear();
     }
 
     private String invoke(String w1, String w2) throws Exception {
         return (String) queryBridgeWordsMethod.invoke(null, w1, w2);
     }
 
+    private void prepareGraph(String content) throws Exception {
+        Path tempFile = Files.createTempFile("graph_input_" + UUID.randomUUID(), ".txt");
+        Files.writeString(tempFile, content);
+        parseMethod.invoke(null, tempFile.toString());
+    }
+
     @Test
     public void testBothWordsNotInGraph() throws Exception {
+        prepareGraph("a b c");
         String result = invoke("x", "y");
-        assertTrue(result.contains("No \"x\" and \"y\" in the graph!"));
+        assertEquals("No \"x\" and \"y\" in the graph!", result);
     }
 
     @Test
     public void testFirstWordNotInGraph() throws Exception {
+        prepareGraph("a b c");
         String result = invoke("x", "c");
-        assertTrue(result.contains("No \"x\" in the graph!"));
+        assertEquals("No \"x\" in the graph!", result);
     }
 
     @Test
     public void testSecondWordNotInGraph() throws Exception {
+        prepareGraph("a b c");
         String result = invoke("a", "x");
-        assertTrue(result.contains("No \"x\" in the graph!"));
+        assertEquals("No \"x\" in the graph!", result);
+    }
+
+    @Test
+    public void testWord1NotKey() throws Exception {
+        prepareGraph("a b c");
+        String result = invoke("b", "c");
+        assertEquals("No bridge words from \"b\" to \"c\"!", result);
     }
 
     @Test
     public void testNoBridgeWordsFound() throws Exception {
+        prepareGraph("a b c");
         String result = invoke("c", "a");
-        assertTrue(result.contains("No bridge words"));
+        assertEquals("No bridge words from \"c\" to \"a\"!", result);
     }
 
     @Test
     public void testOneBridgeWordFound() throws Exception {
-        // 构造图：a → b → c
-        String content = "a b c";
-        Path tempFile = Files.createTempFile("single_bridge", ".txt");
-        Files.writeString(tempFile, content);
-
-        Method parseMethod = Lab1FX.class.getDeclaredMethod("parseTextToGraph", String.class);
-        parseMethod.setAccessible(true);
-        parseMethod.invoke(null, tempFile.toString());
-
+        prepareGraph("a b c");
         String result = invoke("a", "c");
-        assertTrue(result.contains("b"), "应能找到桥接词 b");
+        assertEquals("The bridge words from \"a\" to \"c\" are: b.", result);
+    }
+
+    @Test
+    public void testTwoBridgeWordsFound() throws Exception {
+        prepareGraph("a b c a d c");
+        String result = invoke("a", "c");
+        assertEquals("The bridge words from \"a\" to \"c\" are: b and d.", result);
     }
 
     @Test
     public void testMultipleBridgeWordsFound() throws Exception {
+        prepareGraph("a b c a d c a e c");
         String result = invoke("a", "c");
-        assertTrue(result.contains("b") && result.contains("d"));
-        assertTrue(result.contains("and") || result.contains(","), "多个桥接词应以 and 或 , 分隔");
+        assertTrue(result.contains("b") && result.contains("d") && result.contains("e"));
+        assertTrue(result.contains(",") && result.contains("and"));
+    }
+
+    @Test
+    public void testEmptyStringInput() throws Exception {
+        prepareGraph("a b c");
+        String result = invoke("", "c");
+        assertTrue(result.contains("No \"\" in the graph!") || result.contains("No bridge words"));
+    }
+
+    @Test
+    public void testEmptyGraph() throws Exception {
+        prepareGraph("");
+        String result = invoke("a", "c");
+        assertEquals("No \"a\" and \"c\" in the graph!", result);
+    }
+
+    @Test
+    public void testCaseSensitivity() throws Exception {
+        prepareGraph("a b c");
+        String result = invoke("A", "C");
+        assertEquals("No \"A\" and \"C\" in the graph!", result);
     }
 }
