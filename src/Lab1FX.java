@@ -1,14 +1,36 @@
-import javafx.application.Application;
-import javafx.stage.*;
-import javafx.scene.*;
-import javafx.scene.control.*;
-import javafx.scene.layout.*;
-import javafx.geometry.*;
-import javafx.scene.text.*;
 import java.awt.Desktop;
-import java.io.*;
-import java.nio.file.*;
-import java.util.*;
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.PriorityQueue;
+import java.util.Random;
+import java.util.Set;
+import javafx.application.Application;
+import javafx.geometry.Insets;
+import javafx.scene.Node;
+import javafx.scene.Scene;
+import javafx.scene.control.Accordion;
+import javafx.scene.control.Alert;
+import javafx.scene.control.Button;
+import javafx.scene.control.ButtonType;
+import javafx.scene.control.Label;
+import javafx.scene.control.TextArea;
+import javafx.scene.control.TextField;
+import javafx.scene.control.TitledPane;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.VBox;
+import javafx.scene.text.Font;
+import javafx.stage.FileChooser;
+import javafx.stage.Stage;
+
 
 public class Lab1FX extends Application {
     private static final Map<String, Map<String, Integer>> graph = new HashMap<>();
@@ -120,12 +142,14 @@ public class Lab1FX extends Application {
         prBtn.setOnAction(e -> {
             try {
                 double d = Double.parseDouble(dInput.getText());
-                if (d < 0 || d > 1) throw new NumberFormatException();
+                if (d < 0 || d > 1) {
+                    throw new NumberFormatException();
+                }
                 var pr = calPageRank(d);
                 StringBuilder sb = new StringBuilder("PageRank 结果：\n");
                 pr.entrySet().stream()
                         .sorted((a, b) -> Double.compare(b.getValue(), a.getValue()))
-                        .forEach(e2 -> sb.append(String.format("%-15s: %.6f\n", e2.getKey(), e2.getValue())));
+                        .forEach(e2 -> sb.append(String.format("%-15s: %.6f%n", e2.getKey(), e2.getValue())));
                 outputArea.setText(sb.toString());
             } catch (NumberFormatException ex) {
                 outputArea.setText("阻尼因子必须是 0 到 1 之间的小数！");
@@ -136,9 +160,13 @@ public class Lab1FX extends Application {
 
     private void handleShowGraph() {
         StringBuilder dot = new StringBuilder("digraph G {\n");
-        for (var from : graph.keySet()) {
-            for (var to : graph.get(from).entrySet()) {
-                dot.append(String.format("  \"%s\" -> \"%s\" [label=\"%d\"];\n", from, to.getKey(), to.getValue()));
+        for (Map.Entry<String, Map<String, Integer>> entry : graph.entrySet()) {
+            String from = entry.getKey();
+            Map<String, Integer> neighbors = entry.getValue();
+            for (Map.Entry<String, Integer> toEntry : neighbors.entrySet()) {
+                String to = toEntry.getKey();
+                int weight = toEntry.getValue();
+                dot.append(String.format("  \"%s\" -> \"%s\" [label=\"%d\"];%n", from, to, weight));
             }
         }
         dot.append("}");
@@ -175,19 +203,31 @@ public class Lab1FX extends Application {
             graph.putIfAbsent(words[i], new HashMap<>());
             graph.get(words[i]).merge(words[i + 1], 1, Integer::sum);
         }
-        if (words.length > 0) graph.putIfAbsent(words[words.length - 1], new HashMap<>());
+        if (words.length > 0) {
+            graph.putIfAbsent(words[words.length - 1], new HashMap<>());
+        }
     }
 
     private static boolean inGraph(String word) {
-        if (graph.containsKey(word)) return true;
+        if (graph.containsKey(word)) {
+            return true;
+        }
         return graph.values().stream().anyMatch(m -> m.containsKey(word));
     }
 
     private static String queryBridgeWords(String word1, String word2) {
-        if (!inGraph(word1) && !inGraph(word2)) return "No \"" + word1 + "\" and \"" + word2 + "\" in the graph!";
-        if (!inGraph(word1)) return "No \"" + word1 + "\" in the graph!";
-        if (!inGraph(word2)) return "No \"" + word2 + "\" in the graph!";
-        if (!graph.containsKey(word1)) return "No bridge words from \"" + word1 + "\" to \"" + word2 + "\"!";
+        if (!inGraph(word1) && !inGraph(word2)) {
+            return "No \"" + word1 + "\" and \"" + word2 + "\" in the graph!";
+        }
+        if (!inGraph(word1)) {
+            return "No \"" + word1 + "\" in the graph!";
+        }
+        if (!inGraph(word2)) {
+            return "No \"" + word2 + "\" in the graph!";
+        }
+        if (!graph.containsKey(word1)) {
+            return "No bridge words from \"" + word1 + "\" to \"" + word2 + "\"!";
+        }
 
         Set<String> bridges = new HashSet<>();
         for (String mid : graph.get(word1).keySet()) {
@@ -196,7 +236,9 @@ public class Lab1FX extends Application {
             }
         }
 
-        if (bridges.isEmpty()) return "No bridge words from \"" + word1 + "\" to \"" + word2 + "\"!";
+        if (bridges.isEmpty()) {
+            return "No bridge words from \"" + word1 + "\" to \"" + word2 + "\"!";
+        }
         List<String> list = new ArrayList<>(bridges);
         String res = switch (list.size()) {
             case 1 -> list.getFirst();
@@ -208,7 +250,9 @@ public class Lab1FX extends Application {
 
     private static String generateNewText(String text) {
         String[] words = text.toLowerCase().replaceAll("[^a-zA-Z\\s]", " ").split("\\s+");
-        if (words.length == 0) return "";
+        if (words.length == 0) {
+            return "";
+        }
         StringBuilder sb = new StringBuilder(words[0]);
         for (int i = 0; i < words.length - 1; i++) {
             String w1 = words[i], w2 = words[i + 1];
@@ -220,18 +264,23 @@ public class Lab1FX extends Application {
                     }
                 }
             }
-            if (!bridges.isEmpty()) sb.append(" ").append(bridges.get(random.nextInt(bridges.size())));
+            if (!bridges.isEmpty()) {
+                sb.append(" ").append(bridges.get(random.nextInt(bridges.size())));
+            }
             sb.append(" ").append(w2);
         }
         return sb.toString();
     }
 
     private static String calcShortestPath(String word1, String word2) {
-        if (!graph.containsKey(word1)) return "No \"" + word1 + "\" in the graph!";
-
+        if (!graph.containsKey(word1)) {
+            return "No \"" + word1 + "\" in the graph!";
+        }
         Map<String, Integer> dist = new HashMap<>();
         Map<String, String> prev = new HashMap<>();
-        for (String node : graph.keySet()) dist.put(node, Integer.MAX_VALUE);
+        for (String node : graph.keySet()) {
+            dist.put(node, Integer.MAX_VALUE);
+        }
         dist.put(word1, 0);
 
         PriorityQueue<String> pq = new PriorityQueue<>(Comparator.comparingInt(dist::get));
@@ -254,12 +303,16 @@ public class Lab1FX extends Application {
             // Display the shortest paths from word1 to all others
             StringBuilder sb = new StringBuilder();
             for (String target : graph.keySet()) {
-                if (target.equals(word1)) continue;
+                if (target.equals(word1)) {
+                    continue;
+                }
                 if (dist.get(target) == Integer.MAX_VALUE) {
                     sb.append("No path from \"").append(word1).append("\" to \"").append(target).append("\"\n");
                 } else {
                     LinkedList<String> path = new LinkedList<>();
-                    for (String at = target; at != null; at = prev.get(at)) path.addFirst(at);
+                    for (String at = target; at != null; at = prev.get(at)) {
+                        path.addFirst(at);
+                    }
                     sb.append("Shortest path to ").append(target).append(": ")
                             .append(String.join(" -> ", path))
                             .append(" (Length: ").append(dist.get(target)).append(")\n");
@@ -267,29 +320,38 @@ public class Lab1FX extends Application {
             }
             return sb.toString();
         } else {
-            if (!graph.containsKey(word2)) return "No \"" + word2 + "\" in the graph!";
-            if (dist.get(word2) == Integer.MAX_VALUE) return "No path from \"" + word1 + "\" to \"" + word2 + "\"";
+            if (!graph.containsKey(word2)) {
+                return "No \"" + word2 + "\" in the graph!";
+            }
+            if (dist.get(word2) == Integer.MAX_VALUE) {
+                return "No path from \"" + word1 + "\" to \"" + word2 + "\"";
+            }
             LinkedList<String> path = new LinkedList<>();
-            for (String at = word2; at != null; at = prev.get(at)) path.addFirst(at);
+            for (String at = word2; at != null; at = prev.get(at)) {
+                path.addFirst(at);
+            }
             return "Shortest path: " + String.join(" -> ", path) + "\nLength: " + dist.get(word2);
         }
     }
-
 
     private static Map<String, Double> calPageRank(double d) {
         int maxIter = 100;
         double tol = 1e-6;
         Set<String> nodes = graph.keySet();
         Map<String, Double> pr = new HashMap<>();
-        for (String n : nodes) pr.put(n, 1.0 / nodes.size());
-
+        for (String n : nodes) {
+            pr.put(n, 1.0 / nodes.size());
+        }
         for (int i = 0; i < maxIter; i++) {
             Map<String, Double> next = new HashMap<>();
-            for (String n : nodes) next.put(n, (1 - d) / nodes.size());
+            for (String n : nodes) {
+                next.put(n, (1 - d) / nodes.size());
+            }
             double sink = 0;
 
-            for (String u : graph.keySet()) {
-                Map<String, Integer> out = graph.get(u);
+            for (Map.Entry<String, Map<String, Integer>> entry : graph.entrySet()) {
+                String u = entry.getKey();
+                Map<String, Integer> out = entry.getValue();
                 if (out.isEmpty()) {
                     sink += pr.get(u);
                     continue;
@@ -301,11 +363,17 @@ public class Lab1FX extends Application {
             }
 
             double sinkShare = d * sink / nodes.size();
-            for (String n : nodes) next.put(n, next.get(n) + sinkShare);
+            for (String n : nodes) {
+                next.put(n, next.get(n) + sinkShare);
+            }
             double delta = 0;
-            for (String n : nodes) delta += Math.abs(next.get(n) - pr.get(n));
+            for (String n : nodes) {
+                delta += Math.abs(next.get(n) - pr.get(n));
+            }
             pr = next;
-            if (delta < tol) break;
+            if (delta < tol) {
+                break;
+            }
         }
         return pr;
     }
@@ -314,14 +382,18 @@ public class Lab1FX extends Application {
         StringBuilder sb = new StringBuilder();
         Set<String> visitedEdges = new HashSet<>();
         List<String> keys = new ArrayList<>(graph.keySet());
-        if (keys.isEmpty()) return "";
+        if (keys.isEmpty()) {
+            return "";
+        }
         String current = keys.get(random.nextInt(keys.size()));
         sb.append(current);
         while (graph.containsKey(current) && !graph.get(current).isEmpty()) {
             List<String> nextNodes = new ArrayList<>(graph.get(current).keySet());
             String next = nextNodes.get(random.nextInt(nextNodes.size()));
             String edge = current + "->" + next;
-            if (visitedEdges.contains(edge)) break;
+            if (visitedEdges.contains(edge)) {
+                break;
+            }
             visitedEdges.add(edge);
             sb.append(" ").append(next);
             current = next;
